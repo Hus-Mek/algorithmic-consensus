@@ -4,7 +4,7 @@ deps.py - FastAPI dependency injection
 Provides:
     - get_db(): yields a fresh SQLite connection per request (closed after)
     - get_processor(): returns the shared InputProcessor singleton
-    - lifespan(): app startup/shutdown (pre-loads InputProcessor)
+    - lifespan(): app startup/shutdown (pre-loads InputProcessor, seeds data)
 """
 
 import os
@@ -26,22 +26,50 @@ _processor = None
 _tables_created = False
 
 
+def _check_ml_available() -> bool:
+    """Check if heavy ML packages are actually importable."""
+    try:
+        import sentence_transformers  # noqa: F401
+        import camel_tools  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """App startup: ensure tables exist, pre-load InputProcessor."""
+    """App startup: ensure tables exist, pre-load InputProcessor, seed data."""
     global _processor, _tables_created
     # Create tables once at startup
     startup_conn = models.init_db()
-    startup_conn.close()
     _tables_created = True
-    from voice import InputProcessor
-    try:
-        _processor = InputProcessor()
-        print("[startup] InputProcessor loaded (ML features enabled)")
-    except Exception as e:
+
+    # Seed demo data if database is empty
+    stats = models.get_stats(startup_conn)
+    if stats["participants"] == 0:
+        print("[startup] Empty database detected, seeding demo data...")
+        models.seed_data(startup_conn)
+        print("[startup] Demo data seeded successfully")
+
+    startup_conn.close()
+
+    # Only try loading InputProcessor if ML packages are installed
+    if _check_ml_available():
+        try:
+            from voice import InputProcessor
+            _processor = InputProcessor()
+            # Force-load one model to verify it actually works (not just lazy init)
+            _processor._load_embedding_model()
+            print("[startup] InputProcessor loaded (ML features enabled)")
+        except Exception as e:
+            _processor = None
+            print(f"[startup] InputProcessor unavailable: {e}")
+            print("[startup] Text-only mode (no audio, no embeddings, no sentiment)")
+    else:
         _processor = None
-        print(f"[startup] InputProcessor unavailable: {e}")
+        print("[startup] ML packages not installed - running in lite mode")
         print("[startup] Text-only mode (no audio, no embeddings, no sentiment)")
+
     yield
 
 
@@ -68,5 +96,5 @@ def get_db():
 
 
 def get_processor():
-    """Return the shared InputProcessor singleton."""
+    """Return the shared InputProcessor singleton (None in lite mode)."""
     return _processor

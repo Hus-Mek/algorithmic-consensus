@@ -146,13 +146,13 @@ def add_statement(
     conn: sqlite3.Connection,
     author_id: str,
     text: str,
-    embedding: np.ndarray,
+    embedding,
     sentiment: str,
     sentiment_score: float,
 ) -> Statement:
     """Store a validated statement with its embedding and sentiment."""
     now = _now()
-    embedding_bytes = embedding.astype(np.float32).tobytes()
+    embedding_bytes = embedding.astype(np.float32).tobytes() if embedding is not None else None
     cursor = conn.execute(
         """INSERT INTO statements (author_id, text, embedding, sentiment, sentiment_score, created_at)
            VALUES (?, ?, ?, ?, ?, ?)""",
