@@ -5,12 +5,15 @@ Every tunable parameter lives here. If a number, path, or model name
 appears in algorithm logic, it should be a named constant in this file.
 """
 
+import os
 from pathlib import Path
 
 # --- Paths ---
 PROJECT_ROOT = Path(__file__).parent
-DB_PATH = PROJECT_ROOT / "consensus.db"
-OUTPUT_DIR = PROJECT_ROOT / "output"
+# Use DATA_DIR env var for persistent storage (e.g. Railway volume), fallback to project root
+_data_dir = Path(os.environ.get("DATA_DIR", str(PROJECT_ROOT)))
+DB_PATH = _data_dir / "consensus.db"
+OUTPUT_DIR = _data_dir / "output"
 
 # --- Voice / Input ---
 WHISPER_MODEL_SIZE = "base"          # tiny|base|small|medium|large
