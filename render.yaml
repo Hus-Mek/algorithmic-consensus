@@ -1,0 +1,13 @@
+# render.yaml - Render Blueprint
+# Deploy: connect your GitHub repo on Render dashboard
+
+services:
+  - type: web
+    name: algorithmic-consensus
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: "8000"
+    healthCheckPath: /api/status
