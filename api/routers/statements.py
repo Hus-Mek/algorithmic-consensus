@@ -43,6 +43,10 @@ def submit_text_statement(
     conn: sqlite3.Connection = Depends(get_db),
     processor=Depends(get_processor),
 ):
+    # Check participant exists (may be stale after DB reset)
+    row = conn.execute("SELECT 1 FROM participants WHERE id=?", (req.author_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="participant_not_found")
     try:
         result = processor.process_input(text=req.text)
     except ValueError as e:
@@ -65,6 +69,10 @@ async def submit_audio_statement(
     conn: sqlite3.Connection = Depends(get_db),
     processor=Depends(get_processor),
 ):
+    # Check participant exists (may be stale after DB reset)
+    row = conn.execute("SELECT 1 FROM participants WHERE id=?", (author_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="participant_not_found")
     suffix = os.path.splitext(audio.filename or "recording.webm")[1] or ".webm"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         content = await audio.read()
