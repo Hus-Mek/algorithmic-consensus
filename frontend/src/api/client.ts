@@ -7,4 +7,16 @@ const api = axios.create({
   },
 });
 
+// Auto-recover stale participant ID after DB reset
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 404 && error.response?.data?.detail === 'participant_not_found') {
+      localStorage.removeItem('participantId');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

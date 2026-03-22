@@ -16,9 +16,13 @@ def cast_vote(
     req: CastVoteRequest,
     conn: sqlite3.Connection = Depends(get_db),
 ):
+    # Check participant exists (may be stale after DB reset)
+    row = conn.execute("SELECT 1 FROM participants WHERE id=?", (req.participant_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="participant_not_found")
     try:
         v = models.cast_vote(conn, req.participant_id, req.statement_id, req.value)
-    except (ValueError, Exception) as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return VoteResponse(
         participant_id=v.participant_id,
