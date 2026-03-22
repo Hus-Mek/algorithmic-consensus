@@ -21,19 +21,10 @@ if _project_root not in sys.path:
 
 import config
 import models
+from voice import InputProcessor
 
 _processor = None
 _tables_created = False
-
-
-def _check_ml_available() -> bool:
-    """Check if heavy ML packages are actually importable."""
-    try:
-        import sentence_transformers  # noqa: F401
-        import camel_tools  # noqa: F401
-        return True
-    except ImportError:
-        return False
 
 
 @asynccontextmanager
@@ -53,22 +44,9 @@ async def lifespan(app: FastAPI):
 
     startup_conn.close()
 
-    # Only try loading InputProcessor if ML packages are installed
-    if _check_ml_available():
-        try:
-            from voice import InputProcessor
-            _processor = InputProcessor()
-            # Force-load one model to verify it actually works (not just lazy init)
-            _processor._load_embedding_model()
-            print("[startup] InputProcessor loaded (ML features enabled)")
-        except Exception as e:
-            _processor = None
-            print(f"[startup] InputProcessor unavailable: {e}")
-            print("[startup] Text-only mode (no audio, no embeddings, no sentiment)")
-    else:
-        _processor = None
-        print("[startup] ML packages not installed - running in lite mode")
-        print("[startup] Text-only mode (no audio, no embeddings, no sentiment)")
+    # Load InputProcessor with all ML models
+    _processor = InputProcessor()
+    print("[startup] InputProcessor created, models will lazy-load on first use")
 
     yield
 
@@ -96,5 +74,5 @@ def get_db():
 
 
 def get_processor():
-    """Return the shared InputProcessor singleton (None in lite mode)."""
+    """Return the shared InputProcessor singleton."""
     return _processor

@@ -317,17 +317,21 @@ class ConsensusAnalyzer:
             "bridge_statements": bridge_details,
         }
 
-        # Generate visualizations
-        heatmap_path = self.generate_fear_heatmap(
-            os.path.join(output_dir, "fear_heatmap.png")
-        )
-        cluster_path = self.generate_cluster_visualization(
-            os.path.join(output_dir, "clusters.png")
-        )
-        report["visualizations"] = {
-            "fear_heatmap": heatmap_path,
-            "cluster_plot": cluster_path,
-        }
+        # Generate visualizations (optional, skip if matplotlib unavailable)
+        try:
+            heatmap_path = self.generate_fear_heatmap(
+                os.path.join(output_dir, "fear_heatmap.png")
+            )
+            cluster_path = self.generate_cluster_visualization(
+                os.path.join(output_dir, "clusters.png")
+            )
+            report["visualizations"] = {
+                "fear_heatmap": heatmap_path,
+                "cluster_plot": cluster_path,
+            }
+        except ImportError:
+            # matplotlib/seaborn not installed - skip PNG generation
+            report["visualizations"] = {}
 
         # Save JSON report
         json_path = os.path.join(output_dir, "report.json")

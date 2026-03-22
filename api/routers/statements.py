@@ -43,34 +43,18 @@ def submit_text_statement(
     conn: sqlite3.Connection = Depends(get_db),
     processor=Depends(get_processor),
 ):
-    if processor is not None:
-        # ML-enabled: run through InputProcessor for embedding + sentiment
-        try:
-            result = processor.process_input(text=req.text)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        stmt = models.add_statement(
-            conn,
-            author_id=req.author_id,
-            text=result["text"],
-            embedding=result["embedding"],
-            sentiment=result["sentiment"],
-            sentiment_score=result["sentiment_score"],
-        )
-    else:
-        # Lite mode: store raw text without ML processing
-        if not req.text or not req.text.strip():
-            raise HTTPException(status_code=400, detail="Text cannot be empty")
-        if len(req.text.strip()) > 140:
-            raise HTTPException(status_code=400, detail="Text exceeds 140 characters")
-        stmt = models.add_statement(
-            conn,
-            author_id=req.author_id,
-            text=req.text.strip(),
-            embedding=None,
-            sentiment="neutral",
-            sentiment_score=0.0,
-        )
+    try:
+        result = processor.process_input(text=req.text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    stmt = models.add_statement(
+        conn,
+        author_id=req.author_id,
+        text=result["text"],
+        embedding=result["embedding"],
+        sentiment=result["sentiment"],
+        sentiment_score=result["sentiment_score"],
+    )
     return _stmt_to_response(stmt)
 
 
@@ -81,11 +65,6 @@ async def submit_audio_statement(
     conn: sqlite3.Connection = Depends(get_db),
     processor=Depends(get_processor),
 ):
-    if processor is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Audio processing unavailable (ML models not loaded)",
-        )
     suffix = os.path.splitext(audio.filename or "recording.webm")[1] or ".webm"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         content = await audio.read()
