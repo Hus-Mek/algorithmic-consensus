@@ -60,9 +60,12 @@ class InputProcessor:
         self._embedding_model = SentenceTransformer(config.EMBEDDING_MODEL)
 
     def _load_sentiment(self):
-        """Load camel-tools Arabic sentiment analyzer."""
-        from camel_tools.sentiment import SentimentAnalyzer
-        self._sentiment_analyzer = SentimentAnalyzer.pretrained(config.SENTIMENT_MODEL)
+        """Load Arabic sentiment analyzer directly from HuggingFace Hub."""
+        from transformers import pipeline
+        self._sentiment_analyzer = pipeline(
+            "sentiment-analysis",
+            model="CAMeL-Lab/bert-base-arabic-camelbert-da-sentiment",
+        )
 
     # --- Core operations ---
 
@@ -151,11 +154,10 @@ class InputProcessor:
         """
         if self._sentiment_analyzer is None:
             self._load_sentiment()
-        label = self._sentiment_analyzer.predict_sentence(text)
-        # camel-tools returns string label; confidence extraction would
-        # require accessing model logits directly. For prototype, we
-        # return 0.0 and rely on the label alone.
-        return label, 0.0
+        result = self._sentiment_analyzer(text[:512])[0]  # truncate to model max
+        label = result["label"].lower()  # "positive", "negative", "neutral"
+        score = result["score"]
+        return label, score
 
     def process_input(self, audio_path: str = None, text: str = None) -> dict:
         """

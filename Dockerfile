@@ -19,12 +19,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies (full - includes Whisper, transformers, camel-tools)
+# Install Python dependencies (Whisper, sentence-transformers, transformers)
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download camel-tools arabert sentiment model during build
-RUN camel_data -i sentiment-analysis-arabert
+# Pre-download HuggingFace sentiment model during build
+RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis', model='CAMeL-Lab/bert-base-arabic-camelbert-da-sentiment')"
 
 # Copy application code
 COPY *.py ./
